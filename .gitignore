@@ -4,3 +4,4 @@ articles/
 Exploratory.ipynb
 .ipynb_checkpoints/
 .vscode/
+wildfire/__pycache__/
