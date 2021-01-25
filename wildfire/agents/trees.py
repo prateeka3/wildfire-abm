@@ -7,8 +7,8 @@ class Tree(Agent):
     """
 
     def __init__(self, unique_id, pos, model, age=0, height=0, diameter=0,
-                 precip=(0,100), temp=(50, 60), soil_moisture=0, soil_pH=6, reproduction_age=20, reproduction_sd=3,
-                 max_diameter=10, max_age=100, max_height=100, max_height_difference=5, bb_tolerance=10,
+                 precip=(0,100), temp=(50, 60), reproduction_age=20, reproduction_sd=3,
+                 max_diameter=10, max_age=100, max_height=100, max_height_difference=5,
                  p=3, k_range=(0.01, 0.02)):
         super().__init__(unique_id, model)
         self.pos = pos
@@ -16,9 +16,7 @@ class Tree(Agent):
         self.height = height
         self.diameter = diameter
         self.precip = precip # inches per year
-        self.temp = temp # average summer temp, Farenheight
-        self.soil_moisture = soil_moisture # (-1, 0, 1)
-        self.soil_pH = soil_pH
+        self.temp = temp # average summer temp, Farenheit
         self.max_diameter = max_diameter # inches
         self.max_age = max_age # years
         self.max_height = max_height # feet
@@ -31,8 +29,6 @@ class Tree(Agent):
         self.temp_sd = (self.temp[1] - self.temp[0])/2
         self.precip_mean = (self.precip[1] + self.precip[0])/2
         self.precip_sd = (self.precip[1] - self.precip[0])/2
-
-        self.calculate_adverse_effects()
 
     def step(self):
         total_adverse_diff = self.calculate_adverse_effects()
