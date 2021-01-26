@@ -1,11 +1,13 @@
 from mesa import Model
 from mesa.time import RandomActivation
-from mesa.space import MultiGrid
+from mesa.space import ContinuousSpace
 from mesa.datacollection import DataCollector
 
 from wildfire.util import *
 from wildfire.agents.trees import PacificSilverFir
 from wildfire.schedule import RandomActivationByType
+
+import numpy as np
 
 class Wildfire(Model):
     """
@@ -39,7 +41,7 @@ class Wildfire(Model):
         self.width = width
 
         self.schedule = RandomActivationByType(self)
-        self.grid = MultiGrid(self.height, self.width, torus=False)
+        self.space = ContinuousSpace(self.width, self.height, False)
         self.datacollector = DataCollector(
             {
                 "Pacific Silver Firs": lambda m: m.schedule.get_type_count(PacificSilverFir),
@@ -49,10 +51,10 @@ class Wildfire(Model):
 
         # Create Trees:
         for _ in range(initial_trees):
-            x = self.random.randrange(self.width)
-            y = self.random.randrange(self.height)
+            x = np.random.rand() * self.width
+            y = np.random.rand() * self.height
             tree = PacificSilverFir(self.next_id(), (x, y), self)
-            self.grid.place_agent(tree, (x, y))
+            self.space.place_agent(tree, (x, y))
             self.schedule.add(tree)
 
         self.running = True
@@ -70,13 +72,14 @@ class Wildfire(Model):
                 ]
             )
 
-    def disperse_seeds(self, tree, neighbors):
+    def disperse_seeds(self, tree):
         if type(tree) == PacificSilverFir:
-            for n in neighbors:
-                if self.grid.is_cell_empty(n):
-                    seed = PacificSilverFir(self.next_id(), n, self)
-                    self.grid.place_agent(seed, n)
-                    self.schedule.add(seed)
+            # fix this, disperse in a neighborhood
+            sow_pos = []
+            for p in sow_pos:
+                seed = PacificSilverFir(self.next_id(), p, self)
+                self.space.place_agent(seed, p)
+                self.schedule.add(seed)
 
     def run_model(self, step_count=200):
         for _ in range(step_count):

@@ -54,8 +54,7 @@ class Tree(Agent):
         self.height += height_delta
 
         if self.age >= self.reproduction_age:
-            neighbors = self.model.grid.iter_neighborhood(self.pos, moore=True, include_center=False)
-            self.model.disperse_seeds(self, neighbors)
+            self.model.disperse_seeds(self)
 
     def calculate_adverse_effects(self):
         # Calculate differences from ideal environment
@@ -77,10 +76,11 @@ class Tree(Agent):
 
     def die(self):
         self.model.schedule.remove(self)
-        self.model.grid.remove_agent(self)
+        self.model.space.remove_agent(self)
 
     def avg_neighbor_height(self):
-        neighbors = self.model.grid.get_neighbors(self.pos, moore=True, include_center=False)
+        # TODO: fix neighborhood based on distance 
+        neighbors = []
         sum_height = 0
         for n in neighbors:
             if issubclass(type(n), Tree):

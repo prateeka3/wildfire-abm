@@ -5,10 +5,10 @@ from mesa.visualization.UserParam import UserSettableParameter
 from wildfire.agents.trees import PacificSilverFir
 from wildfire.model import Wildfire
 from wildfire.portrayal.viz import wildfire_portrayal
+from wildfire.portrayal.SimpleContinuousModule import SimpleCanvas
 from wildfire.util import *
 
-
-canvas_element = CanvasGrid(wildfire_portrayal, WIDTH_CELLS, HEIGHT_CELLS, GRID_WIDTH, GRID_HEIGHT)
+canvas_element = SimpleCanvas(wildfire_portrayal, CANVAS_HEIGHT, CANVAS_WIDTH)
 num_firs_chart = ChartModule(
     [{"Label": "Pacific Silver Firs", "Color": "#00AA00"}]
 )
@@ -17,8 +17,8 @@ height_firs_chart = ChartModule(
 )
 
 model_params = {
-    "height": HEIGHT_CELLS,
-    "width": WIDTH_CELLS,
+    "height": CANVAS_HEIGHT,
+    "width": CANVAS_WIDTH,
 }
 
 server = ModularServer(
