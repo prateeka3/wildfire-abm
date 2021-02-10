@@ -9,7 +9,7 @@ def wildfire_portrayal(agent):
     if type(agent) is PacificSilverFir:
         portrayal['x'] = agent.pos[0]
         portrayal['y'] = agent.pos[1]
-        portrayal['r'] = np.clip(agent.age/20, 1, 10)
+        portrayal['r'] = int(np.clip(agent.diameter, 1, 30))
         portrayal["Color"] = '#00AA00'
 
     return portrayal

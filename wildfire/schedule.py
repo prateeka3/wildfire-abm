@@ -3,6 +3,8 @@ import numpy as np
 
 from mesa.time import RandomActivation
 
+from wildfire.agents.trees import Tree
+
 
 class RandomActivationByType(RandomActivation):
     """
@@ -15,6 +17,7 @@ class RandomActivationByType(RandomActivation):
     def __init__(self, model):
         super().__init__(model)
         self.agents_by_type = defaultdict(dict)
+        self.distances = np.empty(shape=[0,0])
 
     def add(self, agent):
         """
@@ -25,6 +28,8 @@ class RandomActivationByType(RandomActivation):
         """
 
         agent_class = type(agent)
+        if issubclass(agent_class, Tree):
+            agent_class = Tree
         self.agents_by_type[agent_class][agent.unique_id] = agent
 
     def remove(self, agent):
@@ -33,7 +38,11 @@ class RandomActivationByType(RandomActivation):
         """
 
         agent_class = type(agent)
+        if issubclass(agent_class, Tree):
+            agent_class = Tree
         del self.agents_by_type[agent_class][agent.unique_id]
+
+
 
     def step(self, by_type=True):
         """
@@ -57,10 +66,14 @@ class RandomActivationByType(RandomActivation):
         Args:
             agent_type: Type of agent to run.
         """
-        agent_keys = list(self.agents_by_type[agent_type].keys())
-        self.model.random.shuffle(agent_keys)
-        for agent_key in agent_keys:
-            self.agents_by_type[agent_type][agent_key].step()
+        agents = list(self.agents_by_type[agent_type].values())
+        if agent_type == Tree:
+            # order by increasing age
+            agents = sorted(agents, key=lambda a: a.age)
+        else:
+            self.model.random.shuffle(agents)
+        for agent in agents:
+            agent.step()
 
     def get_type_count(self, agent_type):
         """
@@ -73,3 +86,5 @@ class RandomActivationByType(RandomActivation):
         Returns average height of the agent type (tree)
         """
         return np.mean([t.height for t in self.agents_by_type[agent_type].values()])
+
+    

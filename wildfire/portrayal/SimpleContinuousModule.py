@@ -1,6 +1,6 @@
 from mesa.visualization.ModularVisualization import VisualizationElement
 
-from wildfire.agents.trees import PacificSilverFir
+from wildfire.agents.trees import Tree
 
 class SimpleCanvas(VisualizationElement):
     local_includes = ["wildfire/portrayal/simple_continuous_canvas.js"]
@@ -22,7 +22,7 @@ class SimpleCanvas(VisualizationElement):
 
     def render(self, model):
         space_state = []
-        for obj in model.schedule.agents_by_type[PacificSilverFir].values():
+        for obj in model.schedule.agents_by_type[Tree].values():
             portrayal = self.portrayal_method(obj)
             x, y = obj.pos
             x = (x - model.space.x_min) / (model.space.x_max - model.space.x_min)

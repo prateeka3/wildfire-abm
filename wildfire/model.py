@@ -1,11 +1,11 @@
 from mesa import Model
 from mesa.time import RandomActivation
-from mesa.space import ContinuousSpace
 from mesa.datacollection import DataCollector
 
 from wildfire.util import *
-from wildfire.agents.trees import PacificSilverFir
+from wildfire.agents.trees import PacificSilverFir, Tree
 from wildfire.schedule import RandomActivationByType
+from wildfire.space import MyContinuousSpace
 
 import numpy as np
 
@@ -41,11 +41,10 @@ class Wildfire(Model):
         self.width = width
 
         self.schedule = RandomActivationByType(self)
-        self.space = ContinuousSpace(self.width, self.height, False)
+        self.space = MyContinuousSpace(self.width, self.height, False)
         self.datacollector = DataCollector(
             {
-                "Pacific Silver Firs": lambda m: m.schedule.get_type_count(PacificSilverFir),
-                "Pacific Silver Fir Height": lambda m: m.schedule.get_avg_height(PacificSilverFir)
+                "Trees": lambda m: m.schedule.get_type_count(Tree)
             }
         )
 
@@ -74,11 +73,22 @@ class Wildfire(Model):
 
     def disperse_seeds(self, tree):
         if type(tree) == PacificSilverFir:
-            # fix this, disperse in a neighborhood
-            sow_pos = []
-            for p in sow_pos:
-                seed = PacificSilverFir(self.next_id(), p, self)
-                self.space.place_agent(seed, p)
+            # num_seeds, in a random direction
+            angle_dist = [
+                (np.random.rand() * 2 * np.pi, np.random.poisson(lam=tree.tree_spacing))
+                for _ in range(tree.num_seeds)
+            ]
+            sow_pos = [
+                (
+                    tree.pos[0] + np.cos(angle) * dist, # x pos
+                    tree.pos[1] + np.sin(angle) * dist # y pos
+                )
+                for angle, dist in angle_dist
+            ]
+            sow_pos = list(filter(lambda pos: pos[0] > 0 and pos[0] < self.width and pos[1] > 0 and pos[1] < self.height, sow_pos))
+            for pos in sow_pos:
+                seed = PacificSilverFir(self.next_id(), pos, self)
+                self.space.place_agent(seed, pos)
                 self.schedule.add(seed)
 
     def run_model(self, step_count=200):
@@ -86,7 +96,7 @@ class Wildfire(Model):
             self.step()
 
     def get_temp(self, x, y):
-        return 53
+        return 58
 
     def get_precip(self, x, y):
         return 50

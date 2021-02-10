@@ -6,22 +6,18 @@ from wildfire.agents.trees import PacificSilverFir
 from wildfire.model import Wildfire
 from wildfire.portrayal.viz import wildfire_portrayal
 from wildfire.portrayal.SimpleContinuousModule import SimpleCanvas
-from wildfire.util import *
+from wildfire.util import CANVAS_HEIGHT, CANVAS_WIDTH, CONTINUOUS_HEIGHT, CONTINUOUS_WIDTH
 
 canvas_element = SimpleCanvas(wildfire_portrayal, CANVAS_HEIGHT, CANVAS_WIDTH)
 num_firs_chart = ChartModule(
-    [{"Label": "Pacific Silver Firs", "Color": "#00AA00"}]
+    [{"Label": "Trees", "Color": "#00AA00"}]
 )
-height_firs_chart = ChartModule(
-    [{"Label": "Pacific Silver Fir Height", "Color": "#0000AA"}]
-)
-
 model_params = {
-    "height": CANVAS_HEIGHT,
-    "width": CANVAS_WIDTH,
+    "height": CONTINUOUS_HEIGHT,
+    "width": CONTINUOUS_WIDTH,
 }
 
 server = ModularServer(
-    Wildfire, [canvas_element, num_firs_chart, height_firs_chart], "Wildfire Spread", model_params
+    Wildfire, [canvas_element, num_firs_chart], "Wildfire Spread", model_params
 )
 server.port = 8521
