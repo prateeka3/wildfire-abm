@@ -1,11 +1,13 @@
 from mesa import Model
 from mesa.time import RandomActivation
-from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 
 from wildfire.util import *
-from wildfire.agents.trees import PacificSilverFir
+from wildfire.agents.trees import PacificSilverFir, Tree
 from wildfire.schedule import RandomActivationByType
+from mesa.space import ContinuousSpace
+
+import numpy as np
 
 class Wildfire(Model):
     """
@@ -39,20 +41,19 @@ class Wildfire(Model):
         self.width = width
 
         self.schedule = RandomActivationByType(self)
-        self.grid = MultiGrid(self.height, self.width, torus=False)
+        self.space = ContinuousSpace(self.width, self.height, False)
         self.datacollector = DataCollector(
             {
-                "Pacific Silver Firs": lambda m: m.schedule.get_type_count(PacificSilverFir),
-                "Pacific Silver Fir Height": lambda m: m.schedule.get_avg_height(PacificSilverFir)
+                "Trees": lambda m: m.schedule.get_type_count(Tree)
             }
         )
 
         # Create Trees:
         for _ in range(initial_trees):
-            x = self.random.randrange(self.width)
-            y = self.random.randrange(self.height)
+            x = np.random.rand() * self.width
+            y = np.random.rand() * self.height
             tree = PacificSilverFir(self.next_id(), (x, y), self)
-            self.grid.place_agent(tree, (x, y))
+            self.space.place_agent(tree, (x, y))
             self.schedule.add(tree)
 
         self.running = True
@@ -70,20 +71,32 @@ class Wildfire(Model):
                 ]
             )
 
-    def disperse_seeds(self, tree, neighbors):
+    def disperse_seeds(self, tree):
         if type(tree) == PacificSilverFir:
-            for n in neighbors:
-                if self.grid.is_cell_empty(n):
-                    seed = PacificSilverFir(self.next_id(), n, self)
-                    self.grid.place_agent(seed, n)
-                    self.schedule.add(seed)
+            # num_seeds, in a random direction
+            angle_dist = [
+                (np.random.rand() * 2 * np.pi, np.random.poisson(lam=tree.tree_spacing))
+                for _ in range(tree.num_seeds)
+            ]
+            sow_pos = [
+                (
+                    tree.pos[0] + np.cos(angle) * dist, # x pos
+                    tree.pos[1] + np.sin(angle) * dist # y pos
+                )
+                for angle, dist in angle_dist
+            ]
+            sow_pos = list(filter(lambda pos: pos[0] > 0 and pos[0] < self.width and pos[1] > 0 and pos[1] < self.height, sow_pos))
+            for pos in sow_pos:
+                seed = PacificSilverFir(self.next_id(), pos, self)
+                self.space.place_agent(seed, pos)
+                self.schedule.add(seed)
 
     def run_model(self, step_count=200):
         for _ in range(step_count):
             self.step()
 
     def get_temp(self, x, y):
-        return 53
+        return 58
 
     def get_precip(self, x, y):
         return 50

@@ -1,91 +1,86 @@
 from mesa import Agent
 import numpy as np
 
+from wildfire.util import *
+
 class Tree(Agent):
     """
     Tree that may have different requirements for growth/growth rates
     """
 
-    def __init__(self, unique_id, pos, model, age=0, height=0, diameter=0,
-                 precip=(0,100), temp=(50, 60), reproduction_age=20, reproduction_sd=3,
-                 max_diameter=10, max_age=100, max_height=100, max_height_difference=5,
-                 p=3, k_range=(0.01, 0.02)):
+    def __init__(self, unique_id, pos, model, age=-2, height=0, diameter=0,
+                 precip=(0,100), temp=(50, 60), reproduction_height=10,
+                 max_diameter=10, max_age=100, max_height=100, tree_spacing=10,
+                 p=3, k_range=(0.01, 0.02), num_seeds=5):
         super().__init__(unique_id, model)
+        # inits
         self.pos = pos
         self.age = age
         self.height = height
         self.diameter = diameter
+
+        # Ideal Climate
         self.precip = precip # inches per year
         self.temp = temp # average summer temp, Farenheit
+
+        # Tree-Specific Params
         self.max_diameter = max_diameter # inches
         self.max_age = max_age # years
         self.max_height = max_height # feet
-        self.max_height_difference = max_height_difference # max height difference to avg height of surrounding trees to determine amount of sunlight
-        self.p = p
+        self.tree_spacing = tree_spacing # ideal spacing between trees. determines dispersal as well as required sunlight
         self.k_range = k_range
+        self.p = p
+        self.num_seeds = num_seeds
+        self.reproduction_height = reproduction_height
 
-        self.reproduction_age = reproduction_age + reproduction_sd * np.random.standard_normal() # years old, when it starts reproducing
+        # Derived Characteristics
         self.temp_mean = (self.temp[1] + self.temp[0])/2
         self.temp_sd = (self.temp[1] - self.temp[0])/2
         self.precip_mean = (self.precip[1] + self.precip[0])/2
         self.precip_sd = (self.precip[1] - self.precip[0])/2
+        self.max_radius_increase = self.max_diameter/(2*self.max_age)
 
     def step(self):
         total_adverse_diff = self.calculate_adverse_effects()
 
         # if new seed, die if not in good conditions
-        if self.age == 0 and total_adverse_diff + np.random.standard_normal() > 0:
+        if self.age <= 0 and -total_adverse_diff + np.random.standard_normal() > 0:
             self.die()
             return
 
-        # Shift normal of k based on amount of adversity in environment. SD is half of k range
-        middle_k = (self.k_range[1] - self.k_range[0]) / 2 + self.k_range[0]
-        k = self.calc_new_k(middle_k - total_adverse_diff)
-        dr = self.calc_new_k(self.max_diameter/(2*self.max_age))
-        
+        k = self.k_range[1] - total_adverse_diff * (self.k_range[1] - self.k_range[0])
+
+        if k < 0:
+            self.die()
+            return
+
         self.age += 1
+
+        dh = self.max_height * k * self.p * np.exp(-k*self.age) * (1 - np.exp(-k*self.age))**(self.p-1)
+        self.height += dh
+        dr = self.max_radius_increase * k / (self.k_range[1] - self.k_range[0])
         self.diameter += dr
 
-        height_delta = self.max_height * k * self.p * np.exp(-k*self.age) * (1 - np.exp(-k*self.age))**(self.p-1)
-        if height_delta < 0:
-            print(height_delta)
-            self.die()
-            return
-        self.height += height_delta
-
-        if self.age >= self.reproduction_age:
-            neighbors = self.model.grid.iter_neighborhood(self.pos, moore=True, include_center=False)
-            self.model.disperse_seeds(self, neighbors)
+        if self.height >= self.reproduction_height:
+            self.model.disperse_seeds(self)
 
     def calculate_adverse_effects(self):
         # Calculate differences from ideal environment
-        z_t = np.abs((self.model.get_temp(*self.pos) - self.temp_mean)/self.temp_sd) # max allowable: 1
-        z_p = np.abs((self.model.get_precip(*self.pos) - self.precip_mean)/self.precip_sd) # max allowable: 1
-        # sunlight based on nearby trees
-        competing_height_diff = self.avg_neighbor_height() - self.height
-        reduced_sunlight = np.clip(competing_height_diff, 0, None)/self.max_height_difference
+        z_t = np.abs(self.model.get_temp(*self.pos) - self.temp_mean) / self.temp_sd
+        z_p = np.abs(self.model.get_precip(*self.pos) - self.precip_mean) / self.precip_sd
+        # sunlight based on nearby trees. inverse weighted sum of neighboring heights
+        curr_spacing = self.tree_spacing# * 4 * (self.height / self.max_height)
+        neighbors = self.model.space.get_neighbors(self.pos, curr_spacing, False)
+        weighted_neighbor_height = np.sum([1 / self.model.space.get_distance(self.pos, n.pos) * curr_spacing * n.height for n in neighbors])
+        competing_height_diff = weighted_neighbor_height - self.height
+        reduced_sunlight = np.clip(competing_height_diff, 0, None)
 
-        max_adverse_effects = 3 # sum of max allowable amounts of above variables
-        x = (z_t + z_p + reduced_sunlight) / max_adverse_effects * (self.k_range[1] - self.k_range[0])
-        return x
-
-    def calc_new_k(self, total_adverse_diff):
-        mu = total_adverse_diff
-        sd = (self.k_range[1] - self.k_range[0])/2
-        rv = mu + sd * np.random.standard_normal()
-        return np.clip(rv, *self.k_range)
+        max_adverse_effects = 3 # number of above variables
+        return (z_t + z_p + reduced_sunlight) / max_adverse_effects
 
     def die(self):
         self.model.schedule.remove(self)
-        self.model.grid.remove_agent(self)
-
-    def avg_neighbor_height(self):
-        neighbors = self.model.grid.get_neighbors(self.pos, moore=True, include_center=False)
-        sum_height = 0
-        for n in neighbors:
-            if issubclass(type(n), Tree):
-                sum_height += n.height
-        return sum_height / 8
+        self.model.space.remove_agent(self)
 
     def get_volume(self):
         return self.height * (self.diameter / 2)**2 * np.pi
@@ -95,7 +90,7 @@ class PacificSilverFir(Tree):
     https://plants.usda.gov/plantguide/pdf/pg_abam.pdf
     """
 
-    def __init__(self, unique_id, pos, model, age=0, height=0, diameter=0):
+    def __init__(self, unique_id, pos, model, age=-2, height=0, diameter=0):
         super().__init__(
             unique_id,
             pos,
@@ -105,11 +100,11 @@ class PacificSilverFir(Tree):
             diameter=diameter,
             precip=(40, 260),
             temp=(57, 59),
-            reproduction_age=20,
-            reproduction_sd=3,
+            reproduction_height=12,
+            tree_spacing=10,
             max_diameter=45,
             max_age=400,
             max_height=230,
-            max_height_difference=1,
-            k_range=(0.01, 0.022)
+            k_range=(0.01, 0.022),
+            num_seeds=5
             )
