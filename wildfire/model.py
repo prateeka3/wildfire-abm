@@ -5,7 +5,7 @@ from mesa.datacollection import DataCollector
 from wildfire.util import *
 from wildfire.agents.trees import PacificSilverFir, Tree
 from wildfire.schedule import RandomActivationByType
-from wildfire.space import MyContinuousSpace
+from mesa.space import ContinuousSpace
 
 import numpy as np
 
@@ -41,7 +41,7 @@ class Wildfire(Model):
         self.width = width
 
         self.schedule = RandomActivationByType(self)
-        self.space = MyContinuousSpace(self.width, self.height, False)
+        self.space = ContinuousSpace(self.width, self.height, False)
         self.datacollector = DataCollector(
             {
                 "Trees": lambda m: m.schedule.get_type_count(Tree)
