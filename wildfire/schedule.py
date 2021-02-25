@@ -6,6 +6,8 @@ import time
 from mesa.time import RandomActivation
 
 from wildfire.agents.trees import Tree
+from wildfire.agents.foliage import Foliage
+from wildfire.agents.fire import Fire
 
 
 class RandomActivationByType(RandomActivation):
@@ -19,6 +21,8 @@ class RandomActivationByType(RandomActivation):
     def __init__(self, model):
         super().__init__(model)
         self.agents_by_type = defaultdict(dict)
+        self.agents_by_type[Tree] = {}
+        self.agents_by_type[Foliage] = {}
         self.distances = np.empty(shape=[0,0])
         self.num_agents = 0
 

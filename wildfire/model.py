@@ -4,6 +4,7 @@ from mesa.datacollection import DataCollector
 
 from wildfire.util import *
 from wildfire.agents.trees import PacificSilverFir, Tree
+from wildfire.agents.foliage import Foliage
 from wildfire.schedule import RandomActivationByType
 from mesa.space import ContinuousSpace
 
@@ -72,24 +73,29 @@ class Wildfire(Model):
             )
 
     def disperse_seeds(self, tree):
+        # num_seeds, in a random direction
+        sow_pos = get_poisson_random_positions(
+            tree.pos[0], tree.pos[1], tree.tree_spacing,
+            tree.num_seeds, self.width, self.height
+        )
+        
         if type(tree) == PacificSilverFir:
-            # num_seeds, in a random direction
-            angle_dist = [
-                (np.random.rand() * 2 * np.pi, np.random.poisson(lam=tree.tree_spacing))
-                for _ in range(tree.num_seeds)
-            ]
-            sow_pos = [
-                (
-                    tree.pos[0] + np.cos(angle) * dist, # x pos
-                    tree.pos[1] + np.sin(angle) * dist # y pos
-                )
-                for angle, dist in angle_dist
-            ]
-            sow_pos = list(filter(lambda pos: pos[0] > 0 and pos[0] < self.width and pos[1] > 0 and pos[1] < self.height, sow_pos))
             for pos in sow_pos:
                 seed = PacificSilverFir(self.next_id(), pos, self)
                 self.space.place_agent(seed, pos)
                 self.schedule.add(seed)
+
+    def drop_foliage(self, tree):
+        volume = tree.foliage_prop * tree.get_volume()
+        pos = get_poisson_random_positions(
+            tree.pos[0], tree.pos[1], tree.tree_spacing,
+            3, self.width, self.height
+        )[0]
+        foliage = Foliage(self.next_id(), pos, self, volume)
+        print(pos)
+        self.space.place_agent(foliage, pos)
+        self.schedule.add(foliage)
+
 
     def run_model(self, step_count=200):
         for _ in range(step_count):

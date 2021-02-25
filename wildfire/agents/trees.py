@@ -11,7 +11,7 @@ class Tree(Agent):
     def __init__(self, unique_id, pos, model, age=-2, height=0, diameter=0,
                  precip=(0,100), temp=(50, 60), reproduction_height=10,
                  max_diameter=10, max_age=100, max_height=100, tree_spacing=10,
-                 p=3, k_range=(0.01, 0.02), num_seeds=5):
+                 p=3, k_range=(0.01, 0.02), num_seeds=5, foliage_prop=0.1):
         super().__init__(unique_id, model)
         # inits
         self.pos = pos
@@ -32,6 +32,7 @@ class Tree(Agent):
         self.p = p
         self.num_seeds = num_seeds
         self.reproduction_height = reproduction_height
+        self.foliage_prop = foliage_prop
 
         # Derived Characteristics
         self.temp_mean = (self.temp[1] + self.temp[0])/2
@@ -64,6 +65,8 @@ class Tree(Agent):
         if self.height >= self.reproduction_height:
             self.model.disperse_seeds(self)
 
+        self.model.drop_foliage(self)
+
     def calculate_adverse_effects(self):
         # Calculate differences from ideal environment
         z_t = np.abs(self.model.get_temp(*self.pos) - self.temp_mean) / self.temp_sd
@@ -71,6 +74,7 @@ class Tree(Agent):
         # sunlight based on nearby trees. inverse weighted sum of neighboring heights
         curr_spacing = self.tree_spacing# * 4 * (self.height / self.max_height)
         neighbors = self.model.space.get_neighbors(self.pos, curr_spacing, False)
+        neighbors = list(filter(lambda x: issubclass(type(x), Tree), neighbors))
         weighted_neighbor_height = np.sum([1 / self.model.space.get_distance(self.pos, n.pos) * curr_spacing * n.height for n in neighbors])
         competing_height_diff = weighted_neighbor_height - self.height
         reduced_sunlight = np.clip(competing_height_diff, 0, None)
@@ -106,5 +110,6 @@ class PacificSilverFir(Tree):
             max_age=400,
             max_height=230,
             k_range=(0.01, 0.022),
-            num_seeds=5
+            num_seeds=5,
+            foliage_prop=0.1
             )
